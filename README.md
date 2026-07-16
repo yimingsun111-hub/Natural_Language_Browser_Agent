@@ -2,13 +2,15 @@
 
 **English** | [中文](#中文)
 
-A Chrome extension that lets you control your browser with natural language, using **your own API key** — inspired by Claude in Chrome.
+A Chrome extension that lets you control your browser with natural language — inspired by Claude in Chrome.
+
+> **You need your own API key.** This extension doesn't provide AI itself — you sign up with a model provider (e.g. DeepSeek, OpenAI), get an API key from them (usually pay-as-you-go), and paste it into the extension's Settings page. The extension is free; the model calls are billed by the provider to your own account.
 
 Type one sentence in the side panel; the AI looks at the page (screenshot + numbered interactive elements), decides the next step, and executes it — click, type, scroll, navigate — until the task is done.
 
 ## Features
 
-- **Bring your own model** — built-in presets for DeepSeek, Kimi (Moonshot), Qwen and OpenAI, plus a custom option for any OpenAI-compatible endpoint. Your key is stored locally in `chrome.storage` and never leaves your machine except to call the API you configured.
+- **Provider presets** — built-in presets for DeepSeek, Kimi (Moonshot), Qwen and OpenAI, plus a custom option for any OpenAI-compatible endpoint. Requires an API key you obtain yourself from that provider. The key is stored locally in `chrome.storage` and never leaves your machine except to call the API you configured.
 - **Vision** — sends page screenshots to the model so it can read canvas-based pages (Google Docs, embedded images, exam questions…). Requires a vision-capable model such as GPT-4o or Qwen-VL.
 - **Trusted input** — uses `chrome.debugger` (CDP) to send real mouse/keyboard events, so it can operate apps that ignore synthetic events, like Google Docs.
 - **Reliable Docs editing** — the model only proposes a find/replace pattern; deterministic code drives the Google Docs Find-and-Replace dialog (open, toggle regex, fill, replace all). Calibrated against the real Docs DOM.
@@ -64,13 +66,15 @@ Type one sentence in the side panel; the AI looks at the page (screenshot + numb
 
 # 中文
 
-用自然语言 + **你自己的 API Key** 操作浏览器的 Chrome 扩展，灵感来自 Claude in Chrome。
+用自然语言操作浏览器的 Chrome 扩展，灵感来自 Claude in Chrome。
+
+> **需要你自己准备 API Key。** 这个扩展本身不提供 AI 能力——你要去某个模型服务商（如 DeepSeek、OpenAI）注册账号、申请一个 API Key（通常按用量付费），然后填进扩展的设置页。扩展本身免费，调用模型的费用由服务商直接从你自己的账户扣。
 
 在侧边栏输入一句话，AI 会**看**页面（截图 + 编号的可交互元素）、**想**下一步、**做**出点击/输入/滚动/跳转，一步步完成任务。
 
 ## 功能
 
-- **自带模型** —— 内置 DeepSeek、Kimi (Moonshot)、通义千问、OpenAI 模板，也可自定义任意 OpenAI 兼容接口。Key 只存本机 `chrome.storage`，除了调用你配置的 API 不会发往任何地方。
+- **多服务商模板** —— 内置 DeepSeek、Kimi (Moonshot)、通义千问、OpenAI 模板，也可自定义任意 OpenAI 兼容接口。需要你自己在对应服务商申请 API Key。Key 只存本机 `chrome.storage`，除了调用你配置的 API 不会发往任何地方。
 - **视觉** —— 把网页截图发给模型，能读懂 Google Docs 等 canvas 页面、文档里嵌的图片和题目。需要带视觉的模型（GPT-4o、通义-VL 等）。
 - **真实按键** —— 通过 `chrome.debugger`（CDP）发送受信任的键鼠事件，能操作 Google Docs 这类不认合成事件的应用。
 - **可靠的 Docs 编辑** —— 模型只出查找/替换模式，由确定性代码驱动 Docs 的查找替换对话框（打开、勾正则、填框、全部替换），对照真实 DOM 校准。
