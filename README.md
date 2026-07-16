@@ -1,53 +1,108 @@
 # NL Browser Agent
 
-用自然语言 + 你自己的 API Key 操作浏览器的 Chrome 扩展（MVP）。
+**English** | [中文](#中文)
 
-## 它能做什么
+A Chrome extension that lets you control your browser with natural language, using **your own API key** — inspired by Claude in Chrome.
 
-在侧边栏用一句话下指令，AI 会**看**当前网页上的可交互元素、**决定**下一步、**执行**点击/输入/滚动/跳转，一步步替你完成任务。例如：
+Type one sentence in the side panel; the AI looks at the page (screenshot + numbered interactive elements), decides the next step, and executes it — click, type, scroll, navigate — until the task is done.
 
-- “在百度搜索‘上海天气’并告诉我结果”
-- “把这个表单里的姓名填成张三，邮箱填 xxx，然后提交”
-- “找到页面上的登录按钮点进去”
+## Features
 
-## 支持的模型
+- **Bring your own model** — built-in presets for DeepSeek, Kimi (Moonshot), Qwen and OpenAI, plus a custom option for any OpenAI-compatible endpoint. Your key is stored locally in `chrome.storage` and never leaves your machine except to call the API you configured.
+- **Vision** — sends page screenshots to the model so it can read canvas-based pages (Google Docs, embedded images, exam questions…). Requires a vision-capable model such as GPT-4o or Qwen-VL.
+- **Trusted input** — uses `chrome.debugger` (CDP) to send real mouse/keyboard events, so it can operate apps that ignore synthetic events, like Google Docs.
+- **Reliable Docs editing** — the model only proposes a find/replace pattern; deterministic code drives the Google Docs Find-and-Replace dialog (open, toggle regex, fill, replace all). Calibrated against the real Docs DOM.
+- **Floating window** — pop the panel out of the side panel onto the page itself; drag to move, resize from the corner.
+- **Themes** — customize background, surface, text, border, accent and the glow color shown around the page while a task runs.
+- **7 languages** — UI, action log and model replies in 简体中文 / English / 日本語 / 한국어 / Español / Français / Deutsch. A language picker appears on first launch; change anytime in Settings.
+- **Session chat history** — survives switching between side panel and floating window; cleared when the browser closes.
 
-内置模板（都是 OpenAI 兼容接口，填 Key 即用）：DeepSeek、Kimi(Moonshot)、通义千问、OpenAI；外加“自定义”可接任意兼容服务。
+## Install
 
-> 用 DeepSeek 等纯文本模型即可，无需视觉能力——扩展把页面元素抽成带编号的列表喂给模型。
+1. Open `chrome://extensions` and enable **Developer mode**
+2. Click **Load unpacked** and select this folder
+3. Click the extension icon to open the side panel, and pick your language
+4. Open Settings, choose a provider, paste your API key, click **Test connection**
+5. Optionally enable **Vision** (needs a vision model) and **Trusted input (debugger)** — required for editing Google Docs
+6. Switch to a normal web page, type a task, hit **Run**
 
-## 安装 / 运行
+> While a task runs, Chrome shows an *"is debugging this browser"* bar — that's the trusted-input mode and it's normal; it disconnects when the task ends. Don't open DevTools (F12) on the same tab at the same time.
 
-1. 打开 Chrome，地址栏输入 `chrome://extensions`
-2. 右上角打开「开发者模式」
-3. 点「加载已解压的扩展程序」，选择本文件夹 `ai_on_chrome`
-4. 点工具栏里的扩展图标 → 打开侧边栏
-5. 点右上角 ⚙ 进设置，填入你的 API Key，选「设为当前使用」，保存
-6. 回到侧边栏，切到一个普通网页，输入指令，点「运行」
+## Examples
 
-## 文件结构
+- "Search Bing for tomorrow's weather in Shanghai and tell me"
+- "Fill this form: name Zhang San, email xxx, then submit"
+- "Delete the brackets and numbers after every heading in this doc"
+- "Add a Chinese gloss after each of these words, based on the passage above"
 
-- `manifest.json` — 扩展清单（MV3）
-- `background.js` — 让点图标时打开侧边栏
-- `panel.html/js/css` — 侧边栏聊天界面 + Agent 循环入口
-- `options.html/js` — 填 API Key 的设置页
-- `lib/providers.js` — 模型模板 + 调用 OpenAI 兼容接口
-- `lib/page.js` — 注入网页的“读元素 / 执行动作”函数
-- `lib/agent.js` — Agent 主循环（工具定义 + 看→想→做）
+## Project layout
 
-## 视觉 + 真实按键（进阶，复刻 Claude in Chrome 的关键能力）
+| Path | What it does |
+|------|--------------|
+| `manifest.json` | MV3 manifest |
+| `background.js` | Opens the side panel; side-panel close workaround |
+| `panel.html/js/css` | Chat UI (side panel & floating window) |
+| `options.html/js` | Settings: provider / theme / language |
+| `lib/agent.js` | Agent loop: observe → think → act; tool definitions |
+| `lib/page.js` | Injected functions: page snapshot, actions, find-replace driver, glow, floating window |
+| `lib/cdp.js` | Trusted input via `chrome.debugger` (CDP) |
+| `lib/providers.js` | Provider presets + OpenAI-compatible chat API |
+| `lib/theme.js` | Theme storage and CSS variables |
+| `lib/i18n.js` | 7-language dictionaries |
 
-设置页有两个开关：
+## Known limitations
 
-- **启用视觉**：每步把网页截图（带编号标记）发给模型，模型能"看"到画面，可读取 canvas 内容。需选带「视觉」的模型（通义-VL / GPT-4o / Kimi 视觉）。
-- **启用真实按键（debugger）**：通过 `chrome.debugger` 发送受信任的鼠标/键盘事件，才能真正操作 Google Docs / Figma 等 canvas 应用。开启后浏览器顶部会出现"正在调试此浏览器"提示条（正常现象），任务结束自动断开。
+- Cannot operate browser-internal pages (`chrome://…`) or the Chrome Web Store
+- Works on a single tab per task; new tabs/popups opened mid-task aren't followed
+- Real-input click coordinates may drift if page zoom isn't 100%
 
-> 注意：启用 debugger 的标签页不能同时打开 DevTools（F12），否则冲突。
+## License
 
-## 已知限制 / 下一步
+[MIT](LICENSE)
 
-- 不能操作 `chrome://` 等浏览器内部页
-- 单标签页操作，未处理新开标签页/弹窗
-- 精确编辑 Google Docs 正文仍建议走「查找和替换」（已内置引导）
-- 页面缩放非 100% 时，真实点击坐标可能有偏差
-- 备选：接 Google Docs API（B 方案）做程序化编辑，最稳但需配 OAuth
+---
+
+# 中文
+
+用自然语言 + **你自己的 API Key** 操作浏览器的 Chrome 扩展，灵感来自 Claude in Chrome。
+
+在侧边栏输入一句话，AI 会**看**页面（截图 + 编号的可交互元素）、**想**下一步、**做**出点击/输入/滚动/跳转，一步步完成任务。
+
+## 功能
+
+- **自带模型** —— 内置 DeepSeek、Kimi (Moonshot)、通义千问、OpenAI 模板，也可自定义任意 OpenAI 兼容接口。Key 只存本机 `chrome.storage`，除了调用你配置的 API 不会发往任何地方。
+- **视觉** —— 把网页截图发给模型，能读懂 Google Docs 等 canvas 页面、文档里嵌的图片和题目。需要带视觉的模型（GPT-4o、通义-VL 等）。
+- **真实按键** —— 通过 `chrome.debugger`（CDP）发送受信任的键鼠事件，能操作 Google Docs 这类不认合成事件的应用。
+- **可靠的 Docs 编辑** —— 模型只出查找/替换模式，由确定性代码驱动 Docs 的查找替换对话框（打开、勾正则、填框、全部替换），对照真实 DOM 校准。
+- **浮窗模式** —— 把面板弹到网页上，可拖动、可缩放。
+- **主题** —— 背景、表面、文字、边框、强调色、运行光效颜色全部可调。
+- **7 种语言** —— 界面、动作日志、模型回复支持简中/英/日/韩/西/法/德，首次启动选择，设置里随时可改。
+- **会话级聊天记录** —— 侧边栏 ↔ 浮窗切换不丢，关浏览器自动清空。
+
+## 安装
+
+1. 打开 `chrome://extensions`，开启右上角**开发者模式**
+2. 点**加载已解压的扩展程序**，选择本文件夹
+3. 点工具栏扩展图标打开侧边栏，选择语言
+4. 进设置：选服务商 → 填 API Key → 点**测试连接**
+5. 按需打开**视觉**（需视觉模型）和**真实按键（debugger）**——编辑 Google Docs 必须开
+6. 切到普通网页，输入任务，点**运行**
+
+> 任务运行时浏览器顶部会出现"正在调试此浏览器"提示条，这是真实按键模式的正常现象，任务结束自动断开。同一标签页不要同时开 DevTools（F12）。
+
+## 示例
+
+- "在必应搜索明天上海的天气并告诉我结果"
+- "把这个表单里的姓名填成张三，邮箱填 xxx，然后提交"
+- "帮我把文档里每个小标题后面的括号和数字删掉"
+- "根据上面的文章，给这几个单词加上中文释义"
+
+## 已知限制
+
+- 不能操作 `chrome://` 等浏览器内部页和 Chrome 应用商店
+- 每个任务只操作一个标签页，中途新开的标签页/弹窗不会跟进
+- 页面缩放不是 100% 时，真实点击坐标可能有偏差
+
+## 协议
+
+[MIT](LICENSE)
