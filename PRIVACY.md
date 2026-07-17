@@ -35,7 +35,7 @@ Page content (element structure, text, optional screenshots) and your typed inst
 ### Contact
 
 Questions or concerns: open an issue at
-https://github.com/yimingsun111-hub/ai_on_chrome/issues
+https://github.com/yimingsun111-hub/ai_on_browser/issues
 
 ---
 
@@ -68,4 +68,4 @@ NL Browser Agent 让你用自然语言指令自动化操作浏览器。为此，
 ### 联系方式
 
 如有疑问，请在 GitHub 提 issue：
-https://github.com/yimingsun111-hub/ai_on_chrome/issues
+https://github.com/yimingsun111-hub/ai_on_browser/issues
