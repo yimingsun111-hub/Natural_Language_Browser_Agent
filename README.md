@@ -30,6 +30,8 @@ Type one sentence in the side panel; the AI looks at the page (screenshot + numb
 5. Optionally enable **Vision** (needs a vision model) and **Trusted input (debugger)** — required for editing Google Docs
 6. Switch to a normal web page, type a task, hit **Run**
 
+If Edge doesn't automatically restore the sidebar after switching tabs, click the extension icon or press `Ctrl+Shift+Y` (`Cmd+Shift+Y` on macOS).
+
 > While a task runs, the browser shows an *"is debugging this browser"* bar — that's the trusted-input mode and it's normal; it disconnects when the task ends. Don't open DevTools (F12) on the same tab at the same time.
 
 ## Examples
@@ -93,6 +95,8 @@ Type one sentence in the side panel; the AI looks at the page (screenshot + numb
 4. 进设置：选服务商 → 填 API Key → 点**测试连接**
 5. 按需打开**视觉**（需视觉模型）和**真实按键（debugger）**——编辑 Google Docs 必须开
 6. 切到普通网页，输入任务，点**运行**
+
+如果 Edge 切换标签后没有自动恢复侧栏，请点击扩展图标，或按 `Ctrl+Shift+Y`（macOS 为 `Cmd+Shift+Y`）重新打开。
 
 > 任务运行时浏览器顶部会出现"正在调试此浏览器"提示条，这是真实按键模式的正常现象，任务结束自动断开。同一标签页不要同时开 DevTools（F12）。
 
