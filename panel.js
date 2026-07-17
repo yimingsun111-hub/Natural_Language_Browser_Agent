@@ -1,4 +1,4 @@
-import { loadConfig } from "./lib/providers.js";
+import { PRESETS, loadConfig } from "./lib/providers.js";
 import { runTask } from "./lib/agent.js";
 import { loadTheme, applyTheme } from "./lib/theme.js";
 import { mountFloatingPanel } from "./lib/page.js";
@@ -107,7 +107,9 @@ async function initLang() {
 async function refreshActiveModel() {
   const cfg = await loadConfig();
   if (cfg.apiKey) {
-    activeModelEl.textContent = `${cfg.name} · ${cfg.model}`;
+    const preset = PRESETS.find((p) => p.id === cfg.providerId);
+    const providerName = preset ? t(preset.labelKey) : (cfg.name || "Custom");
+    activeModelEl.textContent = `${providerName} · ${cfg.model}`;
     activeModelEl.style.color = "";
   } else {
     activeModelEl.textContent = t("notConfigured");

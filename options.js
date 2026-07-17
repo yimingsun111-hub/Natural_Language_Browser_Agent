@@ -10,6 +10,10 @@ function translatePage() {
   for (const el of document.querySelectorAll("[data-i18n]")) {
     el.textContent = t(el.dataset.i18n);
   }
+  for (const p of PRESETS) {
+    const option = document.querySelector(`#provider option[value="${p.id}"]`);
+    if (option) option.textContent = t(p.labelKey);
+  }
   document.title = t("optTitle") + " · Natural Language Browser Agent";
 }
 
@@ -94,7 +98,7 @@ function currentConfig() {
 for (const p of PRESETS) {
   const opt = document.createElement("option");
   opt.value = p.id;
-  opt.textContent = p.name;
+  opt.textContent = t(p.labelKey);
   providerSel.appendChild(opt);
 }
 
