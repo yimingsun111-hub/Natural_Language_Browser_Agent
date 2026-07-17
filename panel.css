@@ -51,9 +51,9 @@ header {
   background: transparent;
   border-radius: 8px;
   cursor: pointer;
-  color: #6b6b6b;
+  color: var(--text-muted);
 }
-.icon-btn:hover { background: #f0f0f0; color: var(--text); }
+.icon-btn:hover { background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--text); }
 .icon-btn svg { width: 16px; height: 16px; }
 
 /* ── 消息区 ─────────────────────── */
@@ -74,7 +74,7 @@ header {
   text-align: center;
   font-size: 13px;
   line-height: 1.9;
-  color: #b5b5b5;
+  color: color-mix(in srgb, var(--text-muted) 65%, var(--bg));
 }
 
 /* ── 首次启动：语言选择 ─────────── */
@@ -143,7 +143,7 @@ header {
   top: 5px;
   width: 11px;
   height: 11px;
-  background-color: #b5b5b5;
+  background-color: var(--text-muted);
   -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><path d='M9 18l6-6-6-6'/></svg>") center / contain no-repeat;
   mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><path d='M9 18l6-6-6-6'/></svg>") center / contain no-repeat;
 }
@@ -172,7 +172,7 @@ header {
   padding: 10px 10px 8px;
   transition: border-color .15s;
 }
-#composer:focus-within { border-color: #c8d6f5; }
+#composer:focus-within { border-color: color-mix(in srgb, var(--accent) 40%, var(--surface)); }
 #input {
   width: 100%;
   resize: none;
@@ -184,7 +184,7 @@ header {
   line-height: 1.5;
   color: var(--text);
 }
-#input::placeholder { color: #b5b5b5; }
+#input::placeholder { color: color-mix(in srgb, var(--text-muted) 65%, var(--bg)); }
 .composer-bar {
   display: flex;
   align-items: center;
@@ -194,7 +194,7 @@ header {
 .hint {
   flex: 1;
   font-size: 11px;
-  color: #c2c2c2;
+  color: color-mix(in srgb, var(--text-muted) 55%, var(--bg));
 }
 .send-btn, .stop-btn {
   display: flex;
@@ -209,7 +209,7 @@ header {
 .send-btn svg, .stop-btn svg { width: 15px; height: 15px; }
 .send-btn { background: var(--accent); color: #fff; }
 .send-btn:hover { background: color-mix(in srgb, var(--accent) 88%, black); }
-.send-btn:disabled { background: #d4d4d4; cursor: not-allowed; }
+.send-btn:disabled { background: color-mix(in srgb, var(--text-muted) 40%, var(--surface)); cursor: not-allowed; }
 .stop-btn { background: var(--danger); color: #fff; }
 .stop-btn:hover { background: #b91c1c; }
 
@@ -243,7 +243,7 @@ body.running .send-btn { display: none; }
   width: 30px;
   height: 30px;
   border-radius: 6px;
-  background: var(--accent-soft, #eff4ff);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -270,7 +270,7 @@ body.running .send-btn { display: none; }
   flex: none;
   padding: 0;
 }
-.att-card .att-remove:hover { background: #e8e8e8; color: var(--text); }
+.att-card .att-remove:hover { background: color-mix(in srgb, var(--text) 10%, transparent); color: var(--text); }
 
 /* 拖拽文件到面板时高亮输入区 */
 #composer.dragover { border-color: var(--accent); }
