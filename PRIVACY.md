@@ -1,0 +1,71 @@
+# Privacy Policy · 隐私权政策
+
+**NL Browser Agent (Natural Language Browser Agent)**
+
+Last updated: 2026-07-17 · 最后更新：2026-07-17
+
+---
+
+## English
+
+### What this extension does
+
+NL Browser Agent lets you automate your browser with natural-language commands. To do this, when **you** run a task, the extension reads the content of the page you are currently viewing (interactive element structure, page text, and — if Vision is enabled — a screenshot) and sends it to the AI model API endpoint **that you yourself configured** (e.g. DeepSeek, OpenAI, or any OpenAI-compatible endpoint), so the model can decide the next action.
+
+### Data we collect
+
+**None.** The developer operates no server. No analytics, no telemetry, no tracking. Nothing is ever sent to the developer.
+
+### Data stored on your device
+
+- Your API key, provider settings, theme and language preferences — stored locally via `chrome.storage.local`, never uploaded anywhere by the extension.
+- Session chat history — stored via `chrome.storage.session` and automatically erased when the browser closes.
+
+### Data sent to third parties
+
+Page content (element structure, text, optional screenshots) and your typed instructions/attachments are sent **only** to the model API endpoint you configured, **only** while a task you started is running. That transmission is governed by the privacy policy of the provider you chose. The extension never sends data to any endpoint other than the one you configured.
+
+### Data we do NOT do
+
+- We do not sell or transfer user data to third parties.
+- We do not use or transfer user data for purposes unrelated to the extension's single purpose.
+- We do not use or transfer user data to determine creditworthiness or for lending purposes.
+- We do not collect browsing history, and the extension does not read pages in the background — only during a task you explicitly started.
+
+### Contact
+
+Questions or concerns: open an issue at
+https://github.com/yimingsun111-hub/ai_on_chrome/issues
+
+---
+
+## 中文
+
+### 本扩展做什么
+
+NL Browser Agent 让你用自然语言指令自动化操作浏览器。为此，当**你**主动运行任务时，扩展会读取你当前浏览页面的内容（可交互元素结构、页面文字，若开启视觉功能则包含页面截图），并发送给**你自己配置的** AI 模型接口（如 DeepSeek、OpenAI 或任意 OpenAI 兼容接口），由模型决定下一步操作。
+
+### 我们收集哪些数据
+
+**不收集。** 开发者不运营任何服务器，没有统计、没有遥测、没有跟踪，任何数据都不会发送给开发者。
+
+### 存储在你设备上的数据
+
+- API Key、服务商配置、主题与语言偏好——通过 `chrome.storage.local` 仅存本机，扩展不会将其上传到任何地方。
+- 会话级聊天记录——存于 `chrome.storage.session`，浏览器关闭后自动清除。
+
+### 发送给第三方的数据
+
+页面内容（元素结构、文字、可选的截图）与你输入的指令/附件，**仅**在你主动运行任务期间、**仅**发送给你自己配置的模型接口。该传输受你所选服务商的隐私政策约束。除你配置的接口外，扩展不向任何其他端点发送数据。
+
+### 我们承诺不做的事
+
+- 不向第三方出售或传输用户数据
+- 不将用户数据用于与本扩展单一用途无关的目的
+- 不将用户数据用于信用评估或放贷目的
+- 不收集浏览历史；扩展不在后台读取页面，只在你明确启动的任务期间工作
+
+### 联系方式
+
+如有疑问，请在 GitHub 提 issue：
+https://github.com/yimingsun111-hub/ai_on_chrome/issues
