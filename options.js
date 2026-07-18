@@ -1,6 +1,7 @@
 import { PRESETS, loadConfig, saveConfig, testConnection } from "./lib/providers.js";
 import { DEFAULT_THEME, loadTheme, saveTheme, applyTheme } from "./lib/theme.js";
 import { LANGUAGES, loadLang, saveLang, setCurrent, detectDefault, t } from "./lib/i18n.js";
+import { DEFAULT_ACTION_PERMISSIONS, loadActionPermissions, saveActionPermissions } from "./lib/permissions.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -47,22 +48,24 @@ for (const tabBtn of document.querySelectorAll(".tab")) {
 }
 
 // ── 主题 ──
-const THEME_KEYS = ["bg", "surface", "text", "border", "accent", "glow"];
+const THEME_COLOR_KEYS = ["bg", "surface", "text", "border", "accent", "glow"];
 
 async function initTheme() {
   const theme = await loadTheme();
-  for (const k of THEME_KEYS) $("th-" + k).value = theme[k];
+  for (const k of THEME_COLOR_KEYS) $("th-" + k).value = theme[k];
+  $("th-liquidGlass").checked = !!theme.liquidGlass;
   applyTheme(document, theme);
 }
 
 async function onThemeChange() {
-  const theme = {};
-  for (const k of THEME_KEYS) theme[k] = $("th-" + k).value;
+  const theme = { liquidGlass: $("th-liquidGlass").checked };
+  for (const k of THEME_COLOR_KEYS) theme[k] = $("th-" + k).value;
   await saveTheme(theme); // 即时保存；panel 监听 storage 变化会同步生效
   applyTheme(document, theme);
 }
 
-for (const k of THEME_KEYS) $("th-" + k).addEventListener("input", onThemeChange);
+for (const k of THEME_COLOR_KEYS) $("th-" + k).addEventListener("input", onThemeChange);
+$("th-liquidGlass").addEventListener("change", onThemeChange);
 
 $("resetTheme").addEventListener("click", async () => {
   await saveTheme({ ...DEFAULT_THEME });
@@ -70,6 +73,24 @@ $("resetTheme").addEventListener("click", async () => {
 });
 
 initTheme();
+
+// ── 全局动作权限（所有网站共用一份） ──
+const PERMISSION_KEYS = Object.keys(DEFAULT_ACTION_PERMISSIONS);
+
+async function initPermissions() {
+  const permissions = await loadActionPermissions();
+  for (const key of PERMISSION_KEYS) $("perm-" + key).checked = permissions[key] !== false;
+}
+
+async function onPermissionChange() {
+  const permissions = {};
+  for (const key of PERMISSION_KEYS) permissions[key] = $("perm-" + key).checked;
+  await saveActionPermissions(permissions);
+}
+
+for (const key of PERMISSION_KEYS) $("perm-" + key).addEventListener("change", onPermissionChange);
+initPermissions();
+
 const providerSel = $("provider");
 const apiKeyEl = $("apiKey");
 const baseURLEl = $("baseURL");

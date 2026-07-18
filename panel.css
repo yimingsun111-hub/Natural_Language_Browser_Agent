@@ -1,5 +1,7 @@
 * { box-sizing: border-box; }
 
+html { background: var(--bg); }
+
 :root {
   --bg: #fafafa;
   --surface: #ffffff;
@@ -120,7 +122,7 @@ header {
 }
 .msg.user {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   align-self: flex-end;
   max-width: 85%;
 }
@@ -196,7 +198,7 @@ header {
   font-size: 11px;
   color: color-mix(in srgb, var(--text-muted) 55%, var(--bg));
 }
-.send-btn, .stop-btn {
+.send-btn, .stop-btn, .pause-btn, .resume-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -206,16 +208,38 @@ header {
   border-radius: 50%;
   cursor: pointer;
 }
-.send-btn svg, .stop-btn svg { width: 15px; height: 15px; }
-.send-btn { background: var(--accent); color: #fff; }
+.send-btn svg, .stop-btn svg, .pause-btn svg, .resume-btn svg { width: 15px; height: 15px; }
+.send-btn { background: var(--accent); color: var(--on-accent); }
 .send-btn:hover { background: color-mix(in srgb, var(--accent) 88%, black); }
 .send-btn:disabled { background: color-mix(in srgb, var(--text-muted) 40%, var(--surface)); cursor: not-allowed; }
 .stop-btn { background: var(--danger); color: #fff; }
 .stop-btn:hover { background: #b91c1c; }
+.pause-btn { background: color-mix(in srgb, var(--accent) 15%, var(--surface)); color: var(--accent); }
+.pause-btn:hover { background: color-mix(in srgb, var(--accent) 24%, var(--surface)); }
+.resume-btn { background: var(--accent); color: var(--on-accent); }
+.resume-btn:hover { background: color-mix(in srgb, var(--accent) 88%, black); }
 
 /* 运行状态：显示停止、隐藏发送 */
-body:not(.running) .stop-btn { display: none; }
+body:not(.running) .stop-btn, body:not(.running) .pause-btn, body:not(.running) .resume-btn { display: none; }
 body.running .send-btn { display: none; }
+body.running:not(.paused) .resume-btn { display: none; }
+body.running.paused .pause-btn { display: none; }
+
+.approval-card {
+  align-self: stretch;
+  max-width: 100%;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, var(--border));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--danger) 6%, var(--surface));
+}
+.approval-title { font-weight: 650; font-size: 13px; margin-bottom: 5px; }
+.approval-detail { color: var(--text-muted); font-size: 12px; line-height: 1.5; word-break: break-word; }
+.approval-domain { color: var(--text-muted); font-size: 11px; margin-top: 5px; }
+.approval-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.approval-actions button { border-radius: 8px; padding: 6px 9px; font: inherit; font-size: 11.5px; cursor: pointer; }
+.approval-once, .approval-task { border: none; background: var(--accent); color: var(--on-accent); }
+.approval-deny { border: 1px solid var(--border); background: var(--surface); color: var(--text); }
 
 /* ── 附件 ───────────────────────── */
 #attachments { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -274,3 +298,48 @@ body.running .send-btn { display: none; }
 
 /* 拖拽文件到面板时高亮输入区 */
 #composer.dragover { border-color: var(--accent); }
+
+/* ── 浮动小窗：可选液态玻璃 ─────────────────────────────
+   外层网页容器负责真正模糊网页背景，这里让 iframe 内容保持透明并用主题派生色分层。 */
+html[data-liquid-glass="on"] { background: transparent; }
+html[data-liquid-glass="on"] body.float-mode {
+  background:
+    linear-gradient(145deg, var(--glass-panel), transparent 58%),
+    linear-gradient(var(--glass-panel), var(--glass-panel));
+}
+html[data-liquid-glass="on"] body.float-mode header {
+  background: var(--glass-header);
+  border-bottom-color: var(--glass-border);
+}
+html[data-liquid-glass="on"] body.float-mode #composer,
+html[data-liquid-glass="on"] body.float-mode .msg.assistant,
+html[data-liquid-glass="on"] body.float-mode .lp-box button,
+html[data-liquid-glass="on"] body.float-mode .approval-deny {
+  background: var(--glass-surface-strong);
+  border-color: var(--glass-border);
+  box-shadow: 0 8px 24px var(--glass-shadow);
+}
+html[data-liquid-glass="on"] body.float-mode .approval-card {
+  background: color-mix(in srgb, var(--glass-surface-strong) 86%, var(--danger-soft));
+  box-shadow: 0 8px 24px var(--glass-shadow);
+}
+html[data-liquid-glass="on"] body.float-mode .att-card {
+  background: var(--glass-surface);
+  border-color: var(--glass-border);
+}
+html[data-liquid-glass="on"] body.float-mode #langpick {
+  background: color-mix(in srgb, var(--glass-surface-strong) 78%, transparent);
+  -webkit-backdrop-filter: blur(26px) saturate(160%);
+  backdrop-filter: blur(26px) saturate(160%);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  html[data-liquid-glass="on"] body.float-mode,
+  html[data-liquid-glass="on"] body.float-mode header,
+  html[data-liquid-glass="on"] body.float-mode #composer,
+  html[data-liquid-glass="on"] body.float-mode .msg.assistant {
+    background: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}

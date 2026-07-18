@@ -20,13 +20,20 @@ NL Browser Agent lets you automate your browser with natural-language commands. 
 
 - Your API key, provider settings, theme and language preferences — stored locally via `chrome.storage.local`, never uploaded anywhere by the extension.
 - Session chat history — stored via `chrome.storage.session` and automatically erased when the browser closes.
+- A pending right-click selected-text request — stored briefly via `chrome.storage.session` only while the side panel opens, then removed when consumed.
 - Local task performance timing (durations and counts only, never page content) — stored via `chrome.storage.session` for the latest task and erased when the browser closes.
 
 ### Data sent to third parties
 
-Page content (element structure, text, optional screenshots), current-window tab titles/URLs when needed for a multi-tab task, and your typed instructions/attachments are sent **only** to the model API endpoint you configured, **only** while a task you started is running. That transmission is governed by the privacy policy of the provider you chose. The extension never sends data to any endpoint other than the one you configured.
+Page content (element structure, text, optional screenshots), current-window tab titles/URLs when needed for a multi-tab task, and your typed instructions/attachments are sent **only** to the model API endpoint you configured, **only** while a task you started is running. That transmission is governed by the privacy policy of the provider you chose. The only separate destination is the webpage you are operating when you explicitly confirm an upload, submission, or similar website action.
 
-For supported document attachments such as PDF, DOCX, PPTX, and XLSX, text extraction happens locally inside the extension. The extracted text — not the original document file — is included in the request to your configured model. Image attachments are sent as images. Attached files are kept only in memory for the current task and are not permanently stored by the extension.
+When you use a selected-text context-menu action, that selected text is treated as untrusted webpage data and is sent to your configured model as part of the task you explicitly started.
+
+For supported document attachments such as PDF, DOCX, PPTX, and XLSX, text extraction happens locally inside the extension. The extracted text — not the original document file — is included in the request to your configured model. For scanned PDF pages without a usable text layer, the extension locally renders a limited number of pages as images and sends those derived page images to your configured vision model for OCR. Image attachments are sent as images. Attached files and derived page images are kept only in memory for the current task and are not permanently stored by the extension.
+
+Input values are omitted from the page's structured snapshot. Before a vision screenshot is captured, recognized password, payment, API-key, contact, and identity fields are temporarily covered. This reduces accidental exposure but cannot guarantee that every sensitive value rendered elsewhere on a webpage will be detected.
+
+If you explicitly attach a file and ask the agent to upload it to a webpage, the original file is kept only in memory and is transferred directly into that webpage's file input after an action-time confirmation. It is not sent to the model API as an original file; locally extracted text or derived preview images may still be sent as described above.
 
 ### Data we do NOT do
 
@@ -56,13 +63,20 @@ NL Browser Agent 让你用自然语言指令自动化操作浏览器。为此，
 
 - API Key、服务商配置、主题与语言偏好——通过 `chrome.storage.local` 仅存本机，扩展不会将其上传到任何地方。
 - 会话级聊天记录——存于 `chrome.storage.session`，浏览器关闭后自动清除。
+- 等待处理的右键选中文字——仅在侧边栏打开期间短暂存于 `chrome.storage.session`，读取后立即移除。
 - 最近一次任务的本地性能计时（仅耗时与次数，不含页面内容）——存于 `chrome.storage.session`，浏览器关闭后自动清除。
 
 ### 发送给第三方的数据
 
-页面内容（元素结构、文字、可选的截图）、多标签页任务所需的当前窗口标签页标题/网址，以及你输入的指令/附件，**仅**在你主动运行任务期间、**仅**发送给你自己配置的模型接口。该传输受你所选服务商的隐私政策约束。除你配置的接口外，扩展不向任何其他端点发送数据。
+页面内容（元素结构、文字、可选的截图）、多标签页任务所需的当前窗口标签页标题/网址，以及你输入的指令/附件，**仅**在你主动运行任务期间、**仅**发送给你自己配置的模型接口。该传输受你所选服务商的隐私政策约束。唯一的额外目标，是你明确确认上传、提交或类似网站操作时正在操作的目标网页。
 
-对于 PDF、DOCX、PPTX、XLSX 等受支持的文档附件，扩展会在本机提取文字，发送给模型的是提取后的文字，而不是原始文档文件；图片附件则以图片形式发送。附件只会在当前任务期间保存在内存中，扩展不会永久保存。
+当你使用右键菜单处理选中文字时，该文字会作为不可信网页数据，随你明确启动的任务发送给你配置的模型。
+
+对于 PDF、DOCX、PPTX、XLSX 等受支持的文档附件，扩展会在本机提取文字，发送给模型的是提取后的文字，而不是原始文档文件。对于没有可用文字层的扫描 PDF 页面，扩展会在本机把有限数量的页面渲染成图片，再发送给你配置的视觉模型进行 OCR；普通图片附件也会以图片形式发送。附件及衍生页面图片只会在当前任务期间保存在内存中，扩展不会永久保存。
+
+页面结构快照不会包含输入框当前值。截取视觉画面前，扩展会临时遮住识别到的密码、支付、API Key、联系方式和身份信息字段。这能降低意外泄露风险，但不能保证识别网页其他位置渲染出的所有敏感信息。
+
+如果你明确附加文件并要求代理上传到网页，原始文件只会暂存在内存中，并在执行时再次确认后直接放入该网页的文件输入框。原始文件不会作为文件发送给模型接口；在本机提取出的文字或衍生预览图片仍可能按上述说明发送给模型。
 
 ### 我们承诺不做的事
 

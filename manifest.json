@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Natural Language Browser Agent",
-  "version": "0.5.0",
+  "version": "0.7.0",
   "description": "用自然语言 + 自己的 API Key 操作浏览器（DeepSeek / Kimi / 通义 / 自定义）",
-  "permissions": ["storage", "scripting", "activeTab", "tabs", "sidePanel", "debugger"],
+  "permissions": ["storage", "scripting", "activeTab", "tabs", "sidePanel", "debugger", "contextMenus"],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js",

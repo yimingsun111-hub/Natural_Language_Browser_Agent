@@ -3,17 +3,23 @@ import { runTask } from "./lib/agent.js";
 import { loadTheme, applyTheme } from "./lib/theme.js";
 import { mountFloatingPanel } from "./lib/page.js";
 import { LANGUAGES, loadLang, saveLang, setCurrent, detectDefault, t } from "./lib/i18n.js";
-import { DOCUMENT_EXTENSIONS, extractDocumentText } from "./lib/document-parser.js";
+import { DOCUMENT_EXTENSIONS, extractDocumentAttachment, extractDocumentText } from "./lib/document-parser.js";
 
 const logEl = document.getElementById("log");
 const inputEl = document.getElementById("input");
 const runBtn = document.getElementById("run");
 const stopBtn = document.getElementById("stop");
+const pauseBtn = document.getElementById("pause");
+const resumeBtn = document.getElementById("resume");
 const activeModelEl = document.getElementById("active-model");
+const isFloatingMode = new URLSearchParams(location.search).get("float") === "1";
 
 let stopped = false;
 let running = false;
 let runController = null;
+let paused = false;
+let pauseWaiters = [];
+let currentApproval = null;
 let pendingAttachmentReads = 0;
 let attachmentQueue = Promise.resolve();
 const conversation = []; // 跨轮对话上下文：{role:'user'|'assistant', content}
@@ -21,6 +27,7 @@ const conversation = []; // 跨轮对话上下文：{role:'user'|'assistant', co
 // ── 聊天记录持久化（会话级：浏览器关闭即清空）──────────────
 // 侧边栏和浮窗是两个独立页面实例，记录存到 storage.session 里两边共享、切换不丢。
 const HISTORY_KEY = "chatHistory";
+const SELECTION_TASK_KEY = "pendingSelectionTask";
 let transcript = []; // 所有显示过的消息：{role, text}
 
 function renderMessage(role, text) {
@@ -37,6 +44,58 @@ function addMessage(role, text) {
   chrome.storage.session.set({ [HISTORY_KEY]: transcript }).catch(() => {});
 }
 
+function requestApproval(risk) {
+  return new Promise((resolve) => {
+    const card = document.createElement("div");
+    card.className = "approval-card";
+    const title = document.createElement("div");
+    title.className = "approval-title";
+    title.textContent = risk.title || t("riskConfirmTitle");
+    const detail = document.createElement("div");
+    detail.className = "approval-detail";
+    detail.textContent = `${risk.detail || ""}\n${risk.action || ""}`.trim();
+    const domain = document.createElement("div");
+    domain.className = "approval-domain";
+    domain.textContent = risk.domain ? t("riskDomain", risk.domain) : "";
+    const actions = document.createElement("div");
+    actions.className = "approval-actions";
+    const finish = (decision) => {
+      if (currentApproval?.card === card) currentApproval = null;
+      card.remove();
+      resolve(decision);
+    };
+    for (const [decision, cls, label] of [
+      ["once", "approval-once", t("riskAllowOnce")],
+      ["task", "approval-task", t("riskAllowTask")],
+      ["deny", "approval-deny", t("riskDeny")]
+    ]) {
+      const button = document.createElement("button");
+      button.className = cls;
+      button.textContent = label;
+      button.addEventListener("click", () => finish(decision));
+      actions.appendChild(button);
+    }
+    card.append(title, detail, domain, actions);
+    logEl.appendChild(card);
+    logEl.scrollTop = logEl.scrollHeight;
+    currentApproval = { card, finish };
+  });
+}
+
+function waitIfPaused() {
+  if (!paused) return Promise.resolve(false);
+  return new Promise((resolve) => pauseWaiters.push(() => resolve(true)));
+}
+
+function setPaused(on) {
+  paused = on;
+  document.body.classList.toggle("paused", on);
+  if (!on) {
+    const waiters = pauseWaiters.splice(0);
+    waiters.forEach((resume) => resume());
+  }
+}
+
 async function restoreHistory() {
   try {
     const d = await chrome.storage.session.get(HISTORY_KEY);
@@ -48,6 +107,32 @@ async function restoreHistory() {
       else if (m.role === "assistant") conversation.push({ role: "assistant", content: m.text });
     }
   } catch (_) {}
+}
+
+async function consumeSelectionTask(payload = null) {
+  if (document.visibilityState !== "visible") return;
+  if (!payload) {
+    const data = await chrome.storage.session.get(SELECTION_TASK_KEY);
+    payload = data[SELECTION_TASK_KEY];
+  }
+  if (!payload?.selection) return;
+  if (Date.now() - Number(payload.createdAt || 0) > 60000) {
+    await chrome.storage.session.remove(SELECTION_TASK_KEY);
+    return;
+  }
+  const key = {
+    ask: "selectionAsk",
+    summarize: "selectionSummarize",
+    translate: "selectionTranslate",
+    explain: "selectionExplain"
+  }[payload.action] || "selectionAsk";
+  // JSON 字符串会转义换行和引号，网页文字无法伪造模板的结束标记。
+  const quotedSelection = JSON.stringify(String(payload.selection).slice(0, 12000));
+  inputEl.value = t(key, quotedSelection);
+  await chrome.storage.session.remove(SELECTION_TASK_KEY);
+  inputEl.focus();
+  inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length);
+  if (payload.autoRun && !running) queueMicrotask(run);
 }
 
 // ── 多语言 ──────────────────────────
@@ -62,6 +147,8 @@ function applyI18n() {
   document.getElementById("attach").title = t("tAttach");
   runBtn.title = t("tRun").replace("Cmd", primaryKey);
   stopBtn.title = t("tStop");
+  pauseBtn.title = t("tPause");
+  resumeBtn.title = t("tResume");
   logEl.dataset.l1 = t("emptyTitle");
   logEl.dataset.l2 = t("emptyEx1");
   logEl.dataset.l3 = t("emptyEx2");
@@ -157,13 +244,29 @@ document.getElementById("float").addEventListener("click", async () => {
 });
 
 // 浮窗里运行时：隐藏"以浮窗打开"按钮（已经是浮窗了）
-if (new URLSearchParams(location.search).get("float") === "1") {
+if (isFloatingMode) {
+  document.body.classList.add("float-mode");
   document.getElementById("float").style.display = "none";
 }
 
 // 主题
 async function refreshTheme() {
-  applyTheme(document, await loadTheme());
+  const theme = await loadTheme();
+  applyTheme(document, theme);
+  if (isFloatingMode && window.parent !== window) {
+    // 只同步视觉配置，不包含 API Key 或聊天内容。网页外壳据此做真正的背景模糊。
+    window.parent.postMessage({
+      type: "nlba-floating-theme",
+      theme: {
+        bg: theme.bg,
+        surface: theme.surface,
+        text: theme.text,
+        border: theme.border,
+        accent: theme.accent,
+        liquidGlass: !!theme.liquidGlass
+      }
+    }, "*");
+  }
 }
 refreshTheme();
 
@@ -176,16 +279,26 @@ chrome.storage.onChanged.addListener(async (_changes, area) => {
   refreshTheme();
 });
 
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "session" && changes[SELECTION_TASK_KEY]?.newValue) {
+    consumeSelectionTask(changes[SELECTION_TASK_KEY].newValue).catch(() => {});
+  }
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") consumeSelectionTask().catch(() => {});
+});
+
 function setRunning(on) {
   running = on;
   document.body.classList.toggle("running", on);
   runBtn.disabled = on || pendingAttachmentReads > 0;
+  if (!on) setPaused(false);
 }
 
 // ── 附件（图片/文本/文档，本地提取后随任务发给模型）──────────────
 const attachmentsEl = document.getElementById("attachments");
 const fileInputEl = document.getElementById("file-input");
-const MAX_IMAGES = 3;
+const MAX_IMAGES = 6;
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const MAX_TEXT_CHARS = 60000;
 const MAX_TOTAL_TEXT_CHARS = 120000;
@@ -222,7 +335,9 @@ function renderAttachments() {
     rm.innerHTML =
       '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>';
     rm.addEventListener("click", () => {
-      attachments.splice(i, 1);
+      const groupId = att.uploadId || att.sourceUploadId;
+      if (groupId) attachments = attachments.filter((item) => item.uploadId !== groupId && item.sourceUploadId !== groupId);
+      else attachments.splice(i, 1);
       renderAttachments();
     });
     card.appendChild(rm);
@@ -251,6 +366,15 @@ function downscaleImage(dataUrl, maxDim = 1600) {
   });
 }
 
+function readFileDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error || new Error("Unable to read file"));
+    reader.readAsDataURL(file);
+  });
+}
+
 async function addFiles(fileList) {
   for (const file of fileList) {
     const name = file.name || "file";
@@ -259,35 +383,63 @@ async function addFiles(fileList) {
         addMessage("system", t("attachTooLarge", name));
         continue;
       }
+      const uploadMeta = {
+        uploadId: crypto.randomUUID(),
+        uploadDataUrl: await readFileDataUrl(file),
+        uploadMimeType: file.type || "application/octet-stream",
+        uploadName: name,
+        uploadSize: file.size,
+        uploadLastModified: file.lastModified || Date.now()
+      };
       if (file.type.startsWith("image/") || IMAGE_EXT.test(name)) {
         if (attachments.filter((a) => a.kind === "image").length >= MAX_IMAGES) {
           addMessage("system", t("attachTooMany"));
+          attachments.push({ kind: "file", name, uploadOnly: true, ...uploadMeta });
           continue;
         }
-        const raw = await new Promise((res, rej) => {
-          const fr = new FileReader();
-          fr.onload = () => res(fr.result);
-          fr.onerror = rej;
-          fr.readAsDataURL(file);
-        });
-        const dataUrl = await downscaleImage(raw);
-        attachments.push({ kind: "image", dataUrl, name });
+        const dataUrl = await downscaleImage(uploadMeta.uploadDataUrl);
+        attachments.push({ kind: "image", dataUrl, name, ...uploadMeta });
         continue;
       }
 
       let text = "";
+      let renderedOcrPages = 0;
+      const derivedStart = attachments.length;
       if (file.type.startsWith("text/") || TEXT_EXT.test(name)) {
         text = await file.text();
       } else if (DOCUMENT_EXT.test(name)) {
         addMessage("system", t("attachReading", name));
-        text = await extractDocumentText(file);
+        if (/\.pdf$/i.test(name)) {
+          const availableImages = Math.max(0, MAX_IMAGES - attachments.filter((a) => a.kind === "image").length);
+          const parsed = await extractDocumentAttachment(file, { maxOcrPages: availableImages });
+          text = parsed.text || "";
+          for (const page of parsed.images || []) {
+            attachments.push({
+              kind: "image",
+              dataUrl: page.dataUrl,
+              name: `${name} · page ${page.pageNumber}`,
+              documentName: name,
+              pageNumber: page.pageNumber,
+              ocr: true,
+              sourceUploadId: uploadMeta.uploadId
+            });
+          }
+          renderedOcrPages = parsed.images?.length || 0;
+          if (renderedOcrPages) addMessage("system", t("attachOcrReady", name, renderedOcrPages));
+          if (parsed.omittedOcrPages) addMessage("system", t("attachOcrLimited", name, parsed.omittedOcrPages));
+        } else {
+          text = await extractDocumentText(file);
+        }
       } else {
-        addMessage("system", t("attachUnsupported", name));
+        attachments.push({ kind: "file", name, uploadOnly: true, ...uploadMeta });
+        addMessage("system", t("attachUploadOnly", name));
         continue;
       }
 
       if (!text.trim()) {
-        addMessage("system", t("attachNoText", name));
+        if (renderedOcrPages && attachments[derivedStart]) Object.assign(attachments[derivedStart], uploadMeta);
+        else attachments.push({ kind: "file", name, uploadOnly: true, ...uploadMeta });
+        if (!renderedOcrPages) addMessage("system", t("attachUploadOnly", name));
         continue;
       }
       const existingChars = attachments
@@ -297,10 +449,12 @@ async function addFiles(fileList) {
       const limit = Math.min(MAX_TEXT_CHARS, remaining);
       if (!limit) {
         addMessage("system", t("attachTextLimit", name));
+        if (renderedOcrPages && attachments[derivedStart]) Object.assign(attachments[derivedStart], uploadMeta);
+        else attachments.push({ kind: "file", name, uploadOnly: true, ...uploadMeta });
         continue;
       }
       const clipped = text.slice(0, limit);
-      attachments.push({ kind: "text", text: clipped, name, document: DOCUMENT_EXT.test(name) });
+      attachments.push({ kind: "text", text: clipped, name, document: DOCUMENT_EXT.test(name), ...uploadMeta });
       if (clipped.length < text.length) addMessage("system", t("attachTruncated", name));
     } catch (error) {
       addMessage("system", t("attachReadFailed", name, error?.message || String(error)));
@@ -361,7 +515,7 @@ async function run() {
   renderAttachments();
 
   // 用户气泡里带上附件名，跨轮上下文也只记文字（附件本体不进历史，保持轻量）
-  const names = taskAttachments.map((a) => a.name).join(", ");
+  const names = [...new Set(taskAttachments.map((a) => a.documentName || a.name))].join(", ");
   const shownTask = names ? `${task}\n${t("attachLine", names)}` : task;
   addMessage("user", shownTask);
   inputEl.value = "";
@@ -371,7 +525,10 @@ async function run() {
   setRunning(true);
 
   try {
-    const answer = await runTask(task, addMessage, () => stopped, conversation, taskAttachments, runController.signal);
+    const answer = await runTask(task, addMessage, () => stopped, conversation, taskAttachments, runController.signal, {
+      confirmAction: requestApproval,
+      waitIfPaused
+    });
     conversation.push({ role: "user", content: shownTask });
     if (answer) conversation.push({ role: "assistant", content: answer });
   } catch (e) {
@@ -385,7 +542,19 @@ async function run() {
 runBtn.addEventListener("click", run);
 stopBtn.addEventListener("click", () => {
   stopped = true;
+  currentApproval?.finish("deny");
+  setPaused(false);
   runController?.abort();
+});
+pauseBtn.addEventListener("click", () => {
+  if (!running || paused) return;
+  setPaused(true);
+  addMessage("system", t("aPaused"));
+});
+resumeBtn.addEventListener("click", () => {
+  if (!running || !paused) return;
+  setPaused(false);
+  addMessage("system", t("aResumed"));
 });
 inputEl.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) run();
@@ -396,4 +565,5 @@ inputEl.addEventListener("keydown", (e) => {
   await initLang();
   await restoreHistory();
   await refreshActiveModel();
+  await consumeSelectionTask();
 })();

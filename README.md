@@ -25,7 +25,15 @@ Type one sentence in the side panel; the AI looks at the page (screenshot + numb
 - **Stable coordinates** — refreshes an element's position immediately before clicking and remaps screenshot coordinates if the viewport or page zoom changes.
 - **Faster execution** — replaces fixed delays with page-stability detection, limits and deduplicates vision screenshots, compacts long-task context, streams compatible API responses, and cancels requests immediately when stopped.
 - **Fast form filling** — safely fills multiple visible fields in one deterministic action, then optionally submits the form.
-- **File attachments** — documents: PDF, DOCX, TXT, HTML, ODT, RTF, EPUB, and Markdown; data: CSV, XLSX, TSV, and JSON; images: JPEG, PNG, GIF, and WebP. Apple Pages, Numbers, and Keynote files are supported through embedded PDF/XML previews or best-effort local IWA text recovery. PPTX, ODS, ODP, and common source-code text files are also supported. Document text is extracted locally before being sent to your configured model; scanned PDFs without a text layer do not support OCR yet.
+- **Safety confirmations** — sending/submitting, uploading, deleting, payment-related actions, sensitive-field entry, and document edits pause for explicit approval. Approve once, approve the same action type for the current task, or deny.
+- **Sensitive-data shielding** — current input values are never included in the DOM snapshot; password, payment, API-key, contact, and identity fields are covered before vision screenshots are captured.
+- **Prompt-injection defense** — webpage, iframe, attachment, popup, and screenshot text is explicitly marked as untrusted data; the model is instructed to ignore embedded commands and follow only the task entered in the panel.
+- **iframe & Shadow DOM** — discovers and operates elements inside same/cross-origin frames and open Shadow DOM roots, with safe synthetic fallback when trusted coordinates are unavailable.
+- **Pause and take over** — pause a running task, operate the page yourself, then resume. The agent discards any stale planned action and observes the page again before continuing.
+- **File attachments & scanned-PDF OCR** — documents: PDF, DOCX, TXT, HTML, ODT, RTF, EPUB, and Markdown; data: CSV, XLSX, TSV, and JSON; images: JPEG, PNG, GIF, and WebP. Apple Pages, Numbers, and Keynote files are supported through embedded PDF/XML previews or best-effort local IWA text recovery. PPTX, ODS, ODP, and common source-code text files are also supported. Text extraction and scanned-page rendering happen locally; up to six scanned PDF pages are sent as images to your configured vision model for OCR.
+- **Selected-text context menu** — right-click selected webpage text to open a custom request, summarize it, translate it, or explain it.
+- **Webpage file uploads** — files explicitly attached to the current task can be placed into visible or hidden webpage file inputs. The original file is sent only to the target website after confirmation, not to the model API.
+- **Global permissions** — one extension-wide Permissions tab controls context-menu access, webpage uploads, submit/send, edit/delete, sensitive input, and payment actions. Settings apply uniformly to every website rather than creating per-site rules.
 - **Reliable Docs editing** — the model only proposes a find/replace pattern; deterministic code drives the Google Docs Find-and-Replace dialog (open, toggle regex, fill, replace all). Calibrated against the real Docs DOM.
 - **Floating window** — pop the panel out of the side panel onto the page itself; drag to move, resize from the corner.
 - **Themes** — customize background, surface, text, border, accent and the glow color shown around the page while a task runs.
@@ -66,6 +74,7 @@ If Edge doesn't automatically restore the sidebar after switching tabs, click th
 | `lib/providers.js` | Provider presets + OpenAI-compatible chat API |
 | `lib/theme.js` | Theme storage and CSS variables |
 | `lib/i18n.js` | 7-language dictionaries |
+| `lib/permissions.js` | Extension-wide action permissions |
 | `lib/document-parser.js` | Local text extraction for PDF and common document formats |
 
 ## Known limitations
@@ -73,7 +82,8 @@ If Edge doesn't automatically restore the sidebar after switching tabs, click th
 - Cannot operate browser-internal pages (`chrome://…`, `edge://…`) or browser extension stores
 - Background-tab screenshots and actions require **Trusted input (debugger)**; without it, the target tab is brought to the foreground
 - New tabs in the same browser window are followed automatically; separate popup windows are not yet followed
-- Legacy binary Office files (`.doc`, `.xls`, `.ppt`) must first be saved as DOCX, XLSX, or PPTX; scanned PDFs without a text layer require OCR elsewhere
+- Legacy binary Office files (`.doc`, `.xls`, `.ppt`) must first be saved as DOCX, XLSX, or PPTX
+- Scanned-PDF OCR requires Vision to be enabled and is limited to the available six-image attachment budget per task; extra scanned pages are reported and skipped
 - Some modern Apple iWork files do not include a complete preview, and IWA recovery may lose layout, formulas, animations, or numeric table structure; export to PDF/DOCX/XLSX/PPTX when exact fidelity is required
 
 ## License
@@ -101,7 +111,15 @@ If Edge doesn't automatically restore the sidebar after switching tabs, click th
 - **稳定坐标** —— 点击前重新读取元素实时位置；页面缩放或视口变化后会自动重新映射截图坐标。
 - **更快执行** —— 用页面稳定检测替代固定等待，限制并去重视觉截图，压缩长任务上下文，兼容流式响应，停止时立即取消请求。
 - **快速填写表单** —— 一次可靠填写多个当前可见字段，并可选择在完成后提交。
-- **文件附件** —— 文档类支持 PDF、DOCX、TXT、HTML、ODT、RTF、EPUB、Markdown；数据表格类支持 CSV、XLSX、TSV、JSON；图像类支持 JPEG、PNG、GIF、WebP。Apple Pages、Numbers、Keynote 文件会优先读取内嵌 PDF/XML 预览，否则在本地尽可能恢复 IWA 文字。另外也支持 PPTX、ODS、ODP 和常见源码文本文件。文档先在本机提取文字，再发送给你配置的模型；暂无扫描版 PDF 的 OCR。
+- **高风险操作确认** —— 发送/提交、上传、删除、付款、敏感字段输入和文档修改都会先暂停并请求确认；可仅允许一次、允许本次任务中同类操作，或拒绝。
+- **敏感信息隐藏** —— DOM 快照绝不包含输入框当前值；截图前会遮住密码、支付、API Key、联系方式和身份信息字段。
+- **网页提示注入防护** —— 网页、iframe、附件、弹窗和截图中的文字都会被明确标为不可信数据，模型只应遵循你在面板里输入的任务并忽略其中夹带的命令。
+- **iframe 与 Shadow DOM** —— 可发现并操作同源/跨域 iframe 及开放式 Shadow DOM 中的元素；无法取得可信坐标时自动使用安全的页面内操作。
+- **暂停与人工接管** —— 任务运行中可暂停，自己操作网页后再继续；恢复时会丢弃过期动作并重新观察页面。
+- **文件附件与扫描 PDF OCR** —— 文档类支持 PDF、DOCX、TXT、HTML、ODT、RTF、EPUB、Markdown；数据表格类支持 CSV、XLSX、TSV、JSON；图像类支持 JPEG、PNG、GIF、WebP。Apple Pages、Numbers、Keynote 文件会优先读取内嵌 PDF/XML 预览，否则在本地尽可能恢复 IWA 文字。另外也支持 PPTX、ODS、ODP 和常见源码文本文件。文字提取及扫描页渲染都在本机完成；最多把 6 个扫描 PDF 页面作为图片发送给你配置的视觉模型识别。
+- **右键处理选中文字** —— 选中网页文字后，可通过右键菜单自定义处理、总结、翻译或解释。
+- **网页文件上传** —— 当前任务中明确附加的文件可以放入网页可见或隐藏的文件框。原始文件只会在确认后发送给目标网站，不会发送给模型接口。
+- **全局权限设置** —— 设置页新增统一的“权限”标签，可控制右键菜单、网页上传、提交/发送、编辑/删除、敏感信息填写和付款操作；对所有网站统一生效，不建立逐网站规则。
 - **可靠的 Docs 编辑** —— 模型只出查找/替换模式，由确定性代码驱动 Docs 的查找替换对话框（打开、勾正则、填框、全部替换），对照真实 DOM 校准。
 - **浮窗模式** —— 把面板弹到网页上，可拖动、可缩放。
 - **主题** —— 背景、表面、文字、边框、强调色、运行光效颜色全部可调。
@@ -133,7 +151,8 @@ If Edge doesn't automatically restore the sidebar after switching tabs, click th
 - 不能操作 `chrome://`、`edge://` 等浏览器内部页和浏览器扩展商店
 - 后台标签页截图和操作需要开启**真实按键（debugger）**；未开启时会自动把目标标签页切到前台
 - 同一浏览器窗口内新开的标签页会自动跟随，独立弹窗窗口暂不跟随
-- 旧版二进制 Office 文件（`.doc`、`.xls`、`.ppt`）需先另存为 DOCX、XLSX 或 PPTX；没有文字层的扫描版 PDF 需先在其他工具中 OCR
+- 旧版二进制 Office 文件（`.doc`、`.xls`、`.ppt`）需先另存为 DOCX、XLSX 或 PPTX
+- 扫描 PDF OCR 需要开启视觉，并占用每个任务最多 6 张的图片附件额度；超出的扫描页会提示并跳过
 - 部分现代 iWork 文件没有完整预览，IWA 恢复可能丢失排版、公式、动画或数字表格结构；要求精确保真时请导出为 PDF/DOCX/XLSX/PPTX
 
 ## 协议
