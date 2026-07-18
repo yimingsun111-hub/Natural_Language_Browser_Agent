@@ -25,6 +25,7 @@ Type one sentence in the side panel; the AI looks at the page (screenshot + numb
 - **Stable coordinates** — refreshes an element's position immediately before clicking and remaps screenshot coordinates if the viewport or page zoom changes.
 - **Faster execution** — replaces fixed delays with page-stability detection, limits and deduplicates vision screenshots, compacts long-task context, streams compatible API responses, and cancels requests immediately when stopped.
 - **Fast form filling** — safely fills multiple visible fields in one deterministic action, then optionally submits the form.
+- **File attachments** — documents: PDF, DOCX, TXT, HTML, ODT, RTF, EPUB, and Markdown; data: CSV, XLSX, TSV, and JSON; images: JPEG, PNG, GIF, and WebP. Apple Pages, Numbers, and Keynote files are supported through embedded PDF/XML previews or best-effort local IWA text recovery. PPTX, ODS, ODP, and common source-code text files are also supported. Document text is extracted locally before being sent to your configured model; scanned PDFs without a text layer do not support OCR yet.
 - **Reliable Docs editing** — the model only proposes a find/replace pattern; deterministic code drives the Google Docs Find-and-Replace dialog (open, toggle regex, fill, replace all). Calibrated against the real Docs DOM.
 - **Floating window** — pop the panel out of the side panel onto the page itself; drag to move, resize from the corner.
 - **Themes** — customize background, surface, text, border, accent and the glow color shown around the page while a task runs.
@@ -65,12 +66,15 @@ If Edge doesn't automatically restore the sidebar after switching tabs, click th
 | `lib/providers.js` | Provider presets + OpenAI-compatible chat API |
 | `lib/theme.js` | Theme storage and CSS variables |
 | `lib/i18n.js` | 7-language dictionaries |
+| `lib/document-parser.js` | Local text extraction for PDF and common document formats |
 
 ## Known limitations
 
 - Cannot operate browser-internal pages (`chrome://…`, `edge://…`) or browser extension stores
 - Background-tab screenshots and actions require **Trusted input (debugger)**; without it, the target tab is brought to the foreground
 - New tabs in the same browser window are followed automatically; separate popup windows are not yet followed
+- Legacy binary Office files (`.doc`, `.xls`, `.ppt`) must first be saved as DOCX, XLSX, or PPTX; scanned PDFs without a text layer require OCR elsewhere
+- Some modern Apple iWork files do not include a complete preview, and IWA recovery may lose layout, formulas, animations, or numeric table structure; export to PDF/DOCX/XLSX/PPTX when exact fidelity is required
 
 ## License
 
@@ -97,6 +101,7 @@ If Edge doesn't automatically restore the sidebar after switching tabs, click th
 - **稳定坐标** —— 点击前重新读取元素实时位置；页面缩放或视口变化后会自动重新映射截图坐标。
 - **更快执行** —— 用页面稳定检测替代固定等待，限制并去重视觉截图，压缩长任务上下文，兼容流式响应，停止时立即取消请求。
 - **快速填写表单** —— 一次可靠填写多个当前可见字段，并可选择在完成后提交。
+- **文件附件** —— 文档类支持 PDF、DOCX、TXT、HTML、ODT、RTF、EPUB、Markdown；数据表格类支持 CSV、XLSX、TSV、JSON；图像类支持 JPEG、PNG、GIF、WebP。Apple Pages、Numbers、Keynote 文件会优先读取内嵌 PDF/XML 预览，否则在本地尽可能恢复 IWA 文字。另外也支持 PPTX、ODS、ODP 和常见源码文本文件。文档先在本机提取文字，再发送给你配置的模型；暂无扫描版 PDF 的 OCR。
 - **可靠的 Docs 编辑** —— 模型只出查找/替换模式，由确定性代码驱动 Docs 的查找替换对话框（打开、勾正则、填框、全部替换），对照真实 DOM 校准。
 - **浮窗模式** —— 把面板弹到网页上，可拖动、可缩放。
 - **主题** —— 背景、表面、文字、边框、强调色、运行光效颜色全部可调。
@@ -128,6 +133,8 @@ If Edge doesn't automatically restore the sidebar after switching tabs, click th
 - 不能操作 `chrome://`、`edge://` 等浏览器内部页和浏览器扩展商店
 - 后台标签页截图和操作需要开启**真实按键（debugger）**；未开启时会自动把目标标签页切到前台
 - 同一浏览器窗口内新开的标签页会自动跟随，独立弹窗窗口暂不跟随
+- 旧版二进制 Office 文件（`.doc`、`.xls`、`.ppt`）需先另存为 DOCX、XLSX 或 PPTX；没有文字层的扫描版 PDF 需先在其他工具中 OCR
+- 部分现代 iWork 文件没有完整预览，IWA 恢复可能丢失排版、公式、动画或数字表格结构；要求精确保真时请导出为 PDF/DOCX/XLSX/PPTX
 
 ## 协议
 

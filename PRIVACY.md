@@ -2,7 +2,7 @@
 
 **NL Browser Agent (Natural Language Browser Agent)**
 
-Last updated: 2026-07-17 · 最后更新：2026-07-17
+Last updated: 2026-07-18 · 最后更新：2026-07-18
 
 ---
 
@@ -25,6 +25,8 @@ NL Browser Agent lets you automate your browser with natural-language commands. 
 ### Data sent to third parties
 
 Page content (element structure, text, optional screenshots), current-window tab titles/URLs when needed for a multi-tab task, and your typed instructions/attachments are sent **only** to the model API endpoint you configured, **only** while a task you started is running. That transmission is governed by the privacy policy of the provider you chose. The extension never sends data to any endpoint other than the one you configured.
+
+For supported document attachments such as PDF, DOCX, PPTX, and XLSX, text extraction happens locally inside the extension. The extracted text — not the original document file — is included in the request to your configured model. Image attachments are sent as images. Attached files are kept only in memory for the current task and are not permanently stored by the extension.
 
 ### Data we do NOT do
 
@@ -59,6 +61,8 @@ NL Browser Agent 让你用自然语言指令自动化操作浏览器。为此，
 ### 发送给第三方的数据
 
 页面内容（元素结构、文字、可选的截图）、多标签页任务所需的当前窗口标签页标题/网址，以及你输入的指令/附件，**仅**在你主动运行任务期间、**仅**发送给你自己配置的模型接口。该传输受你所选服务商的隐私政策约束。除你配置的接口外，扩展不向任何其他端点发送数据。
+
+对于 PDF、DOCX、PPTX、XLSX 等受支持的文档附件，扩展会在本机提取文字，发送给模型的是提取后的文字，而不是原始文档文件；图片附件则以图片形式发送。附件只会在当前任务期间保存在内存中，扩展不会永久保存。
 
 ### 我们承诺不做的事
 

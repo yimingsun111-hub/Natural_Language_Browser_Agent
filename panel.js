@@ -3,6 +3,7 @@ import { runTask } from "./lib/agent.js";
 import { loadTheme, applyTheme } from "./lib/theme.js";
 import { mountFloatingPanel } from "./lib/page.js";
 import { LANGUAGES, loadLang, saveLang, setCurrent, detectDefault, t } from "./lib/i18n.js";
+import { DOCUMENT_EXTENSIONS, extractDocumentText } from "./lib/document-parser.js";
 
 const logEl = document.getElementById("log");
 const inputEl = document.getElementById("input");
@@ -13,6 +14,8 @@ const activeModelEl = document.getElementById("active-model");
 let stopped = false;
 let running = false;
 let runController = null;
+let pendingAttachmentReads = 0;
+let attachmentQueue = Promise.resolve();
 const conversation = []; // 跨轮对话上下文：{role:'user'|'assistant', content}
 
 // ── 聊天记录持久化（会话级：浏览器关闭即清空）──────────────
@@ -176,15 +179,19 @@ chrome.storage.onChanged.addListener(async (_changes, area) => {
 function setRunning(on) {
   running = on;
   document.body.classList.toggle("running", on);
-  runBtn.disabled = on;
+  runBtn.disabled = on || pendingAttachmentReads > 0;
 }
 
-// ── 附件（图片/文本文件，随任务发给模型）──────────────
+// ── 附件（图片/文本/文档，本地提取后随任务发给模型）──────────────
 const attachmentsEl = document.getElementById("attachments");
 const fileInputEl = document.getElementById("file-input");
 const MAX_IMAGES = 3;
-const MAX_TEXT_CHARS = 50000;
-const TEXT_EXT = /\.(txt|md|csv|json|js|ts|py|html|css|xml|ya?ml|log|tsv)$/i;
+const MAX_FILE_BYTES = 25 * 1024 * 1024;
+const MAX_TEXT_CHARS = 60000;
+const MAX_TOTAL_TEXT_CHARS = 120000;
+const IMAGE_EXT = /\.(jpe?g|png|gif|webp)$/i;
+const TEXT_EXT = /\.(txt|md|markdown|csv|json|js|ts|py|html?|css|xml|ya?ml|log|tsv)$/i;
+const DOCUMENT_EXT = new RegExp(`\\.(${DOCUMENT_EXTENSIONS.join("|")})$`, "i");
 
 let attachments = []; // {kind:'image', dataUrl, name} | {kind:'text', text, name}
 
@@ -246,32 +253,77 @@ function downscaleImage(dataUrl, maxDim = 1600) {
 
 async function addFiles(fileList) {
   for (const file of fileList) {
-    if (file.type.startsWith("image/")) {
-      if (attachments.filter((a) => a.kind === "image").length >= MAX_IMAGES) {
-        addMessage("system", t("attachTooMany"));
+    const name = file.name || "file";
+    try {
+      if (file.size > MAX_FILE_BYTES) {
+        addMessage("system", t("attachTooLarge", name));
         continue;
       }
-      const raw = await new Promise((res, rej) => {
-        const fr = new FileReader();
-        fr.onload = () => res(fr.result);
-        fr.onerror = rej;
-        fr.readAsDataURL(file);
-      });
-      const dataUrl = await downscaleImage(raw);
-      attachments.push({ kind: "image", dataUrl, name: file.name || "image" });
-    } else if (file.type.startsWith("text/") || TEXT_EXT.test(file.name || "")) {
-      const text = await file.text();
-      attachments.push({ kind: "text", text: text.slice(0, MAX_TEXT_CHARS), name: file.name || "file.txt" });
-    } else {
-      addMessage("system", t("attachUnsupported", file.name || file.type || "?"));
+      if (file.type.startsWith("image/") || IMAGE_EXT.test(name)) {
+        if (attachments.filter((a) => a.kind === "image").length >= MAX_IMAGES) {
+          addMessage("system", t("attachTooMany"));
+          continue;
+        }
+        const raw = await new Promise((res, rej) => {
+          const fr = new FileReader();
+          fr.onload = () => res(fr.result);
+          fr.onerror = rej;
+          fr.readAsDataURL(file);
+        });
+        const dataUrl = await downscaleImage(raw);
+        attachments.push({ kind: "image", dataUrl, name });
+        continue;
+      }
+
+      let text = "";
+      if (file.type.startsWith("text/") || TEXT_EXT.test(name)) {
+        text = await file.text();
+      } else if (DOCUMENT_EXT.test(name)) {
+        addMessage("system", t("attachReading", name));
+        text = await extractDocumentText(file);
+      } else {
+        addMessage("system", t("attachUnsupported", name));
+        continue;
+      }
+
+      if (!text.trim()) {
+        addMessage("system", t("attachNoText", name));
+        continue;
+      }
+      const existingChars = attachments
+        .filter((a) => a.kind === "text")
+        .reduce((sum, a) => sum + a.text.length, 0);
+      const remaining = Math.max(0, MAX_TOTAL_TEXT_CHARS - existingChars);
+      const limit = Math.min(MAX_TEXT_CHARS, remaining);
+      if (!limit) {
+        addMessage("system", t("attachTextLimit", name));
+        continue;
+      }
+      const clipped = text.slice(0, limit);
+      attachments.push({ kind: "text", text: clipped, name, document: DOCUMENT_EXT.test(name) });
+      if (clipped.length < text.length) addMessage("system", t("attachTruncated", name));
+    } catch (error) {
+      addMessage("system", t("attachReadFailed", name, error?.message || String(error)));
     }
   }
   renderAttachments();
 }
 
+function queueFiles(files) {
+  if (!files.length) return attachmentQueue;
+  pendingAttachmentReads++;
+  runBtn.disabled = true;
+  const job = attachmentQueue.then(() => addFiles(files));
+  attachmentQueue = job.catch(() => {}).finally(() => {
+    pendingAttachmentReads--;
+    runBtn.disabled = running || pendingAttachmentReads > 0;
+  });
+  return attachmentQueue;
+}
+
 document.getElementById("attach").addEventListener("click", () => fileInputEl.click());
 fileInputEl.addEventListener("change", async () => {
-  await addFiles([...fileInputEl.files]);
+  await queueFiles([...fileInputEl.files]);
   fileInputEl.value = ""; // 允许重复选同一个文件
 });
 
@@ -280,7 +332,7 @@ inputEl.addEventListener("paste", (e) => {
   const files = [...(e.clipboardData?.files || [])];
   if (files.length) {
     e.preventDefault();
-    addFiles(files);
+    queueFiles(files);
   }
 });
 
@@ -295,10 +347,12 @@ document.body.addEventListener("drop", (e) => {
   e.preventDefault();
   composerEl.classList.remove("dragover");
   const files = [...(e.dataTransfer?.files || [])];
-  if (files.length) addFiles(files);
+  if (files.length) queueFiles(files);
 });
 
 async function run() {
+  if (running) return;
+  await attachmentQueue;
   const task = inputEl.value.trim();
   if (!task || running) return;
 
